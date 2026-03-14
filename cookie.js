@@ -1,5 +1,5 @@
 // storage_viewer.js
-
+<script>
 (function () {
     function getCookies() {
         if (!document.cookie) return [];
@@ -62,7 +62,7 @@
                 container.appendChild(line);
             });
         }
-
+    </script>
         document.body.appendChild(container);
     }
 
