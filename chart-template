@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Plotly + Tailwind + DaisyUI Demo</title>
+
+  <!-- Tailwind CSS + DaisyUI -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body class="bg-base-200 min-h-screen p-6">
+
+  <!-- Navbar -->
+  <div class="navbar bg-base-100 shadow-lg rounded-box mb-6">
+    <div class="flex-1">
+      <a class="btn btn-ghost text-xl">Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="card bg-base-100 shadow-xl p-6">
+    <h2 class="text-2xl font-bold mb-4">Sales Chart</h2>
+
+    <!-- Button -->
+    <button class="btn btn-primary mb-4" onclick="updateChart()">
+      Update Data
+    </button>
+
+    <!-- Plotly Chart -->
+    <div id="chart" class="w-full h-[400px]"></div>
+  </div>
+
+  <script>
+    alert(1);
+    // Initial data
+    let data = [{
+      x: ['Jan', 'Feb', 'Mar', 'Apr'],
+      y: [10, 15, 13, 17],
+      type: 'scatter'
+    }];
+
+    let layout = {
+      title: 'Monthly Sales'
+    };
+
+    Plotly.newPlot('chart', data, layout);
+
+    // Update chart function
+    function updateChart() {
+      let newY = Array.from({length: 4}, () => Math.floor(Math.random() * 20));
+
+      Plotly.update('chart', {
+        y: [newY]
+      });
+    }
+  </script>
+
+</body>
+</html>
